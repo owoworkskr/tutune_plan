@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Totune H2 대시보드 — 6장의 스프레드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+  :root{
+    --bg:#0F0D1A; --card:#191631; --card-hi:#221E40;
+    --accent:#7B68EE; --accent-soft:#3A3268;
+    --gold:#E8B54D; --mint:#62D9A8; --rose:#E86A8A;
+    --text:#EFECF9; --muted:#8B86A8; --line:#2A2547;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto} *{transition:none!important;animation:none!important}}
+  body{
+    font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;
+    background:var(--bg); color:var(--text);
+    background-image:radial-gradient(ellipse 60% 40% at 50% -5%, rgba(123,104,238,.14), transparent);
+    min-height:100vh;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:48px 24px 96px}
+
+  /* ── 헤더 ── */
+  header{margin-bottom:40px}
+  .eyebrow{font-size:12px;letter-spacing:.28em;color:var(--accent);font-weight:700;margin-bottom:10px}
+  h1{font-size:clamp(26px,4vw,38px);font-weight:800;line-height:1.25;letter-spacing:-.01em}
+  h1 .gold{color:var(--gold)}
+  .thesis{margin-top:12px;color:var(--muted);font-size:15px;max-width:620px;line-height:1.7}
+
+  /* ── 매출 게이지 ── */
+  .gauge{margin-top:28px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 24px}
+  .gauge-top{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+  .gauge-label{font-size:13px;color:var(--muted);font-weight:600}
+  .gauge-num{font-size:22px;font-weight:800;color:var(--gold)}
+  .gauge-num small{font-size:13px;color:var(--muted);font-weight:500}
+  .bar{margin-top:12px;height:10px;background:var(--accent-soft);border-radius:99px;overflow:hidden}
+  .bar-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:99px;transition:width .6s ease}
+  .gauge-edit{margin-top:10px;font-size:12px;color:var(--muted)}
+  .gauge-edit input{width:110px;background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:5px 8px;font-family:inherit;font-size:12px}
+  .gauge-edit button{background:var(--accent);border:none;color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px}
+
+  /* ── 6장 카드 스프레드 (시그니처) ── */
+  .spread-title{margin:48px 0 6px;font-size:13px;letter-spacing:.22em;color:var(--muted);font-weight:700}
+  .spread-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+  .spread{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+  @media(max-width:860px){.spread{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:520px){.spread{grid-template-columns:repeat(2,1fr)}}
+  .tcard{
+    aspect-ratio:5/7.6; background:var(--card); border:1px solid var(--line);
+    border-radius:14px; padding:14px 12px; cursor:pointer; position:relative;
+    display:flex; flex-direction:column; transition:transform .18s ease, border-color .18s ease;
+  }
+  .tcard:hover{transform:translateY(-6px) rotate(-.6deg); border-color:var(--accent)}
+  .tcard:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
+  .tcard.active{border-color:var(--accent); background:var(--card-hi)}
+  .tcard.judge{border-color:rgba(232,181,77,.55)}
+  .tcard.judge:hover,.tcard.judge.active{border-color:var(--gold)}
+  .tcard .num{font-size:11px;letter-spacing:.18em;color:var(--muted);font-weight:700}
+  .tcard .mon{font-size:26px;font-weight:800;margin-top:4px}
+  .tcard .theme{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.45;flex:1}
+  .tcard .st{font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;align-self:flex-start}
+  .st.wait{background:var(--accent-soft);color:#B7ACF5}
+  .st.run{background:rgba(232,181,77,.16);color:var(--gold)}
+  .st.done{background:rgba(98,217,168,.16);color:var(--mint)}
+  .tcard .prog{margin-top:8px;height:4px;background:var(--accent-soft);border-radius:99px;overflow:hidden}
+  .tcard .prog i{display:block;height:100%;background:var(--mint);border-radius:99px}
+  .tcard.judge .mon{color:var(--gold)}
+
+  /* ── 월 상세 패널 ── */
+  .detail{margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;display:none}
+  .detail.show{display:block;animation:rise .25s ease}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .detail h2{font-size:20px;font-weight:800}
+  .detail .goal{color:var(--muted);font-size:14px;margin:6px 0 20px;line-height:1.6}
+  .roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+  .role{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .role h3{font-size:13px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .d-plan{background:var(--accent)} .d-dev{background:var(--mint)} .d-des{background:var(--rose)} .d-mkt{background:var(--gold)}
+  .task{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;line-height:1.55;color:var(--text);padding:5px 0;cursor:pointer}
+  .task input{margin-top:3px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+  .task.checked span{color:var(--muted);text-decoration:line-through}
+  .dod{margin-top:18px;padding:14px 16px;background:rgba(123,104,238,.08);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;font-size:13px;color:var(--muted);line-height:1.6}
+  .dod b{color:var(--text)}
+
+  /* ── 주간 동향 ── */
+  .trend{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px}
+  .trend-empty{font-size:13px;color:var(--muted);line-height:1.8}
+  .trend-week{font-size:11px;letter-spacing:.16em;color:var(--accent);font-weight:800}
+  .trend-head{font-size:17px;font-weight:800;margin:6px 0 14px;line-height:1.5}
+  .trend ul{list-style:none}
+  .trend li{font-size:13.5px;color:var(--text);line-height:1.65;padding:4px 0 4px 16px;position:relative}
+  .trend li::before{content:"◆";position:absolute;left:0;top:6px;font-size:8px;color:var(--accent)}
+  .trend-action{margin-top:14px;padding:12px 14px;background:rgba(232,181,77,.09);border-left:3px solid var(--gold);border-radius:0 10px 10px 0;font-size:13px}
+  .trend-action b{color:var(--gold)}
+  .trend-meta{margin-top:12px;font-size:11.5px;color:var(--muted)}
+  .trend-meta a{color:var(--muted)}
+  .trend-hist{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+  .trend-hist button{background:var(--bg);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:4px 10px;font-size:11.5px;font-family:inherit;cursor:pointer}
+  .trend-hist button.on{border-color:var(--accent);color:var(--text)}
+
+  /* ── 판정 기준 ── */
+  .verdict{margin-top:48px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+  .v-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .v-card .k{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.08em}
+  .v-card .v{font-size:22px;font-weight:800;margin-top:6px;color:var(--gold)}
+  .v-card .d{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.6}
+
+  footer{margin-top:56px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:18px;line-height:1.7}
+  footer b{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">TOTUNE · 2026 H2</div>
+    <h1>여섯 장의 카드가 남았다.<br>마지막 장은 <span class="gold">판정</span>이다.</h1>
+    <p class="thesis">해외(태국·브라질)에서 수익 내는 K-사주 × 타로 앱으로 전환. 연말까지 매출 ₩1,000,000 발생 여부로 2027의 방향을 정한다.</p>
+
+    <div class="gauge">
+      <div class="gauge-top">
+        <span class="gauge-label">연매출 목표 게이지</span>
+        <span class="gauge-num">₩<span id="rev">0</span> <small>/ ₩1,000,000</small></span>
+      </div>
+      <div class="bar"><div class="bar-fill" id="revBar"></div></div>
+      <div class="gauge-edit">
+        현재 매출 입력: <input type="number" id="revInput" placeholder="예: 150000">
+        <button onclick="saveRev()">기록</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="spread-title" style="margin-top:44px">WEEKLY SIGNAL · 시장 동향</div>
+  <div class="spread-sub">매주 월요일 09:00 자동 갱신 (GitHub Actions) · 아카이브는 <code>docs/trends/</code></div>
+  <div class="trend" id="trend">
+    <div class="trend-empty">아직 수집된 동향이 없음. 레포 Actions에서 "Weekly Trends"를 한 번 수동 실행하면 여기 채워짐.<br>사전 준비: Settings → Secrets → <b>ANTHROPIC_API_KEY</b> 등록.</div>
+  </div>
+
+  <div class="spread-title">MONTHLY SPREAD</div>
+  <div class="spread-sub">카드를 클릭하면 그 달의 롤별 아젠다가 열림 · 체크 상태는 이 브라우저에 저장됨</div>
+  <div class="spread" id="spread"></div>
+  <div class="detail" id="detail"></div>
+
+  <div class="spread-title" style="margin-top:52px">VERDICT · 연말 판정 기준</div>
+  <div class="verdict">
+    <div class="v-card"><div class="k">매출</div><div class="v">₩1,000,000</div><div class="d">도달 → 2027 글로벌 확장. 미달 → 수익모델 재설계. 감정 빼고 숫자로.</div></div>
+    <div class="v-card"><div class="k">결제 유저</div><div class="v">250명 / 최소 50명</div><div class="d">50명 밑이면 "팔리는 물건인가" 자체를 재검토.</div></div>
+    <div class="v-card"><div class="k">바이럴 신호</div><div class="v">공유 유입 주 100+</div><div class="d">사주 카드가 진짜 소셜 화폐인지 9월부터 측정.</div></div>
+  </div>
+
+  <footer>
+    <b>크리티컬 패스:</b> ① 7월 갑자 카드 50장 — 밀리면 전부 밀림 ② 11월 초 IAP 심사 제출 — 12월 신년 대목이 매출의 대부분 ③ 웹 랜딩 — 해외 시딩은 앱스토어 링크로는 절반이 이탈<br>
+    체크·매출 기록은 localStorage 저장 (브라우저별). 팀 공유 기준 문서는 <code>docs/2026-H2-PLAN.md</code>가 원본.
+  </footer>
+</div>
+
+<script>
+const MONTHS=[
+ {m:"7월",num:"I",theme:"콘텐츠 완성",status:"run",goal:"사주 섹션의 재료(카드 60장 텍스트 + PRD)를 전부 끝낸다. 이 달이 크리티컬 패스.",
+  roles:{
+   "기획 · 진구":["나머지 50 갑자 카드 텍스트 완성 (Claude 기획자 활용)","사주 섹션 PRD 확정 (햄버거 메뉴 · 살/신살 범위)","태국/브라질 운세 앱 벤치마킹 3개씩"],
+   "개발 · 파트너":["만세력 라이브러리 연동 PoC","health 프롬프트 재테스트 배포","Apple revoke token 계정삭제 API 착수"],
+   "디자인":["갑자 카드 앞/뒤 템플릿 확정","햄버거 메뉴 구조 시안"],
+   "마케팅 · 진구":["60갑자 영어 카피 파트너 최종 검수 요청"]},
+  dod:"갑자 카드 60장 텍스트 컨펌 / PRD 개발자 전달 / 만세력 PoC 동작"},
+ {m:"8월",num:"II",theme:"사주 개발",status:"wait",goal:"사주 섹션을 앱에 붙인다. 공유 기능이 카드만큼 중요하다.",
+  roles:{
+   "기획 · 진구":["카드 공유 이미지 포맷 확정 (카드+영어카피+워터마크+링크)","AI 표시 라벨 문구·위치 확정 (AI기본법)","살/신살 픽토그램 시리즈 기획"],
+   "개발 · 파트너":["사주 섹션 구현 (KR/EN)","카드 공유 기능 (이미지 익스포트)","계정삭제 마무리 (Apple/Google)"],
+   "디자인":["카드 60종 이미지 완성 (개별 생성→컴포지팅)","공유 이미지 템플릿","살/신살 픽토그램 1차"],
+   "마케팅 · 진구":["Meta Developer 연동 → 인스타 자동 포스팅 가동","카드 티저 주 2회 발행 (Make)"]},
+  dod:"사주 내부 빌드 동작 / 카드 60종 이미지 완료 / 인스타 자동 발행 가동"},
+ {m:"9월",num:"III",theme:"사주 런칭 + 웹 랜딩",status:"wait",goal:"사주 v1 배포. 바이럴의 최소 조건인 웹 랜딩을 만든다.",
+  roles:{
+   "기획 · 진구":["런칭 QA 시나리오 (60갑자 전수)","스토어 문구 업데이트","웹 랜딩 기획 — 카드 1장 체험만"],
+   "개발 · 파트너":["사주 섹션 v1 배포 (KR/EN)","웹 랜딩 MVP 구축","GA 이벤트 설계 (공유·랜딩 전환)"],
+   "디자인":["웹 랜딩 디자인","스토어 스크린샷 업데이트"],
+   "마케팅 · 진구":["KR 커뮤 시딩 — 결과 인증 포맷으로","지표 기준선 확정 (DAU·공유율·전환율)"]},
+  dod:"스토어 배포 / 웹 랜딩 라이브 / 공유→유입 추적 가능"},
+ {m:"10월",num:"IV",theme:"글로벌 현지화",status:"wait",goal:"태국어·포르투갈어로 사주를 연다. 팬덤 훅(최애 궁합)을 붙인다.",
+  roles:{
+   "기획 · 진구":["th/pt 카드 카피 현지화 디렉션 (현지 리뷰어 확보 시도)","최애 궁합 기획 — 최애 생일 → 궁합 카드"],
+   "개발 · 파트너":["th/pt 언어 배포","최애 궁합 기능 구현","웹 랜딩 다국어화"],
+   "디자인":["최애 궁합 결과 카드","현지화 스토어 에셋"],
+   "마케팅 · 진구":["태국/브라질 팬덤 커뮤니티 시딩 (X·Reddit, 웹 랜딩 링크)","최애 궁합 공유 콘텐츠 유도"]},
+  dod:"th/pt 라이브 / 최애 궁합 배포 / 해외 유입 첫 데이터 — 유입 미미하면 11월은 KR 신년에 집중 전환"},
+ {m:"11월",num:"V",theme:"수익화",status:"wait",goal:"돈 받을 수 있는 상태를 만든다. 12월 대목 전 마지노선.",
+  roles:{
+   "기획 · 진구":["복채(팁) UX 기획","광고제거 $1.99 상품 정의","심층 카드 유료 콘텐츠 기획","개인정보처리방침 결제 조항 업데이트"],
+   "개발 · 파트너":["IAP 연동 (팁+광고제거) — 11월 초 심사 제출","심층 카드 출력 구현","구매 복원 기능"],
+   "디자인":["결제 플로우 UI","팁 버튼/모달"],
+   "마케팅 · 진구":["전환 퍼널 분석 (무료→심층)","단일가로 출발 (A/B는 욕심)"]},
+  dod:"결제 라이브 / 첫 결제 발생 / 매출 확인 가능"},
+ {m:"12월",num:"VI",theme:"신년 대목 · 판정",status:"wait",judge:true,goal:"운세 앱 최대 대목(12월 말~1월)에 올라탄다. 그리고 숫자로 판정한다.",
+  roles:{
+   "기획 · 진구":["2027 신년운세(토정비결) — 무료+광고, 심층으로 연결","대운 가이드 $10 또는 연령대 패키지 중 하나만 출시"],
+   "개발 · 파트너":["신년 콘텐츠 배포","안정화·버그픽스 (대목에 죽으면 끝)"],
+   "디자인":["신년 캠페인 비주얼","신년 공유 카드"],
+   "마케팅 · 진구":["신년 시즌 푸시 (KR+해외 동시)","카드 공유 이벤트 (공유 시 심층 1회 무료)"]},
+  dod:"매출 ₩1,000,000 판정 / 결제 유저 수 확인 / 2027 방향 결정"}
+];
+const ROLE_DOT={"기획":"d-plan","개발":"d-dev","디자인":"d-des","마케팅":"d-mkt"};
+const LS="totune_h2_";
+function taskKey(mi,ri,ti){return LS+"t_"+mi+"_"+ri+"_"+ti}
+function countProg(mi){
+  let total=0,done=0;
+  Object.values(MONTHS[mi].roles).forEach((tasks,ri)=>tasks.forEach((_,ti)=>{
+    total++; try{if(localStorage.getItem(taskKey(mi,ri,ti))==="1")done++}catch(e){}
+  }));
+  return total?Math.round(done/total*100):0;
+}
+function renderSpread(activeIdx){
+  const s=document.getElementById("spread"); s.innerHTML="";
+  MONTHS.forEach((mo,i)=>{
+    const p=countProg(i);
+    const stCls=p===100?"done":mo.status;
+    const stTxt=p===100?"완료":(mo.status==="run"?"진행중":"대기");
+    const c=document.createElement("div");
+    c.className="tcard"+(mo.judge?" judge":"")+(i===activeIdx?" active":"");
+    c.tabIndex=0; c.setAttribute("role","button");
+    c.innerHTML=`<div class="num">${mo.num}</div><div class="mon">${mo.m}</div>
+      <div class="theme">${mo.theme}</div>
+      <span class="st ${stCls}">${stTxt} ${p>0?p+"%":""}</span>
+      <div class="prog"><i style="width:${p}%"></i></div>`;
+    c.onclick=()=>openDetail(i);
+    c.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openDetail(i)}};
+    s.appendChild(c);
+  });
+}
+let current=-1;
+function openDetail(i){
+  const d=document.getElementById("detail");
+  if(current===i&&d.classList.contains("show")){d.classList.remove("show");current=-1;renderSpread(-1);return}
+  current=i;
+  const mo=MONTHS[i];
+  let rolesHtml="";
+  Object.entries(mo.roles).forEach(([role,tasks],ri)=>{
+    const dot=ROLE_DOT[role.split(" ")[0]]||"d-plan";
+    let t="";
+    tasks.forEach((task,ti)=>{
+      let checked=false; try{checked=localStorage.getItem(taskKey(i,ri,ti))==="1"}catch(e){}
+      t+=`<label class="task${checked?" checked":""}"><input type="checkbox" ${checked?"checked":""} onchange="toggleTask(${i},${ri},${ti},this)"><span>${task}</span></label>`;
+    });
+    rolesHtml+=`<div class="role"><h3><span class="dot ${dot}"></span>${role}</h3>${t}</div>`;
+  });
+  d.innerHTML=`<h2>${mo.m} — ${mo.theme}</h2><p class="goal">${mo.goal}</p>
+    <div class="roles">${rolesHtml}</div>
+    <div class="dod"><b>완료 기준(DoD):</b> ${mo.dod}</div>`;
+  d.classList.add("show");
+  renderSpread(i);
+  d.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function toggleTask(mi,ri,ti,el){
+  try{localStorage.setItem(taskKey(mi,ri,ti),el.checked?"1":"0")}catch(e){}
+  el.closest(".task").classList.toggle("checked",el.checked);
+  renderSpread(current);
+}
+function saveRev(){
+  const v=parseInt(document.getElementById("revInput").value||"0",10);
+  try{localStorage.setItem(LS+"rev",String(v))}catch(e){}
+  showRev(v);
+}
+function showRev(v){
+  document.getElementById("rev").textContent=v.toLocaleString("ko-KR");
+  document.getElementById("revBar").style.width=Math.min(100,v/1000000*100)+"%";
+}
+/* ── 주간 동향 로드 ── */
+let TREND_HISTORY=[];
+function renderTrend(idx){
+  const t=TREND_HISTORY[idx]; if(!t)return;
+  const el=document.getElementById("trend");
+  const insights=(t.insights||[]).map(i=>`<li>${i}</li>`).join("");
+  const comp=(t.competitor_moves||[]).map(c=>`<li>${c}</li>`).join("");
+  const ranks=(t.rankings||[]).slice(0,5).map(r=>`[${r.region}] #${r.rank} ${r.name}`).join(" · ");
+  const srcs=(t.sources||[]).slice(0,3).map(s=>`<a href="${s.link}" target="_blank" rel="noopener">${s.title}</a>`).join(" · ");
+  const hist=TREND_HISTORY.map((h,i)=>`<button class="${i===idx?'on':''}" onclick="renderTrend(${i})">${h.week}</button>`).join("");
+  el.innerHTML=`<div class="trend-week">${t.week} · ${t.updated||""}</div>
+    <div class="trend-head">${t.headline||""}</div>
+    <ul>${insights}${comp}</ul>
+    ${ranks?`<div class="trend-meta">앱 랭킹 신호: ${ranks}</div>`:""}
+    <div class="trend-action"><b>이번 주 액션 →</b> ${t.action||""}</div>
+    ${srcs?`<div class="trend-meta">출처: ${srcs}</div>`:""}
+    <div class="trend-hist">${hist}</div>`;
+}
+async function loadTrends(){
+  try{
+    const r=await fetch("./trends.json",{cache:"no-store"});
+    if(!r.ok)return;
+    const data=await r.json();
+    TREND_HISTORY=data.history||[];
+    if(TREND_HISTORY.length)renderTrend(0);
+  }catch(e){/* 파일 없으면 안내문 유지 */}
+}
+(function init(){
+  let rev=0; try{rev=parseInt(localStorage.getItem(LS+"rev")||"0",10)}catch(e){}
+  showRev(rev);
+  renderSpread(-1);
+  loadTrends();
+})();
+</script>
+</body>
+</html>

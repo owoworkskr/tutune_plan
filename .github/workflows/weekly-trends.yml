@@ -1,0 +1,36 @@
+name: Weekly Trends
+
+on:
+  schedule:
+    # 매주 월요일 00:00 UTC = 한국시간 월요일 09:00
+    - cron: "0 0 * * 1"
+  workflow_dispatch: {}  # Actions 탭에서 수동 실행 가능
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install requests feedparser anthropic
+
+      - name: Collect & summarize trends
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scripts/collect_trends.py
+
+      - name: Commit results
+        run: |
+          git config user.name "totune-trends-bot"
+          git config user.email "bot@owoworks.local"
+          git add docs/trends dashboard/trends.json
+          git diff --cached --quiet || git commit -m "chore: weekly trends $(date +'%Y-W%V')"
+          git push
