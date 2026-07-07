@@ -117,14 +117,16 @@ def summarize(news, rankings, reddit):
 {raw}"""
 
     msg = client.messages.create(
-        model="claude-sonnet-4-5",
+        model="claude-sonnet-4-6",
         max_tokens=1500,
         messages=[{"role": "user", "content": prompt}],
     )
     text = msg.content[0].text.strip()
-    if text.startswith("```"):
-        text = text.strip("`").replace("json\n", "", 1)
-    return json.loads(text)
+    # 코드블록/전후 잡담이 섞여도 첫 { 부터 마지막 } 까지만 추출
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end == -1:
+        raise ValueError(f"Claude 응답에서 JSON을 못 찾음: {text[:200]}")
+    return json.loads(text[start:end + 1])
 
 
 def write_outputs(summary, rankings):
@@ -172,9 +174,18 @@ def main():
     rankings = fetch_app_rankings()
     reddit = fetch_reddit()
     print(f"collected: news={len(news)} rankings={len(rankings)} reddit={len(reddit)}")
+    if not (news or rankings or reddit):
+        raise RuntimeError("모든 소스 수집 실패 — 네트워크 또는 피드 주소 확인 필요")
     summary = summarize(news, rankings, reddit)
     write_outputs(summary, rankings)
 
 
 if __name__ == "__main__":
-    main()
+    import traceback
+    try:
+        main()
+    except Exception:
+        print("=" * 50)
+        print("[TRENDS FAIL] 아래 트레이스백을 확인:")
+        traceback.print_exc()
+        raise SystemExit(1)
