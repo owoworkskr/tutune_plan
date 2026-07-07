@@ -101,32 +101,48 @@ def summarize(news, rankings, reddit):
 투튠: AI 타로+K사주 앱. 타겟은 한국 Z세대와 태국/브라질 해외 시장.
 전략: Z세대로 확산(갑자 카드 공유, 최애 궁합), 밀레니얼로 수금(심층 분석, 대운 가이드).
 
-아래는 이번 주 수집 데이터다. 다음 JSON만 출력하라 (코드블록 없이 순수 JSON):
-{{
-  "week": "{WEEK_ID}",
-  "headline": "이번 주 한 줄 요약 (한국어, 40자 이내)",
-  "insights": ["투튠에 의미 있는 동향 3~5개, 각 한국어 1~2문장. 출처가 불확실하면 '확인 필요' 표기"],
-  "competitor_moves": ["경쟁/유사 앱 움직임. 없으면 빈 배열"],
-  "action": "이번 주 진구가 할 만한 액션 딱 1개 (한국어 1문장)",
-  "sources": [{{"title": "...", "link": "..."}}]  // 인사이트 근거 링크 최대 5개
-}}
-
-주의: 데이터에 없는 내용을 지어내지 마라. 근거 약하면 insights에 넣지 마라.
+아래 이번 주 수집 데이터를 분석해서 save_trends 툴로 저장하라.
+주의: 데이터에 없는 내용을 지어내지 마라. 근거 약하면 insights에서 빼라.
+인사이트 문장 안에서 큰따옴표(") 인용은 쓰지 마라.
 
 수집 데이터:
 {raw}"""
 
+    trends_tool = {
+        "name": "save_trends",
+        "description": "주간 동향 요약을 저장한다",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "headline": {"type": "string", "description": "이번 주 한 줄 요약, 한국어 40자 이내"},
+                "insights": {"type": "array", "items": {"type": "string"},
+                             "description": "투튠에 의미 있는 동향 3~5개, 각 한국어 1~2문장"},
+                "competitor_moves": {"type": "array", "items": {"type": "string"},
+                                     "description": "경쟁/유사 앱 움직임, 없으면 빈 배열"},
+                "action": {"type": "string", "description": "이번 주 실행할 액션 딱 1개, 한국어 1문장"},
+                "sources": {"type": "array", "items": {
+                    "type": "object",
+                    "properties": {"title": {"type": "string"}, "link": {"type": "string"}},
+                    "required": ["title", "link"]},
+                    "description": "인사이트 근거 링크 최대 5개"},
+            },
+            "required": ["headline", "insights", "action", "sources"],
+        },
+    }
+
     msg = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=1500,
+        max_tokens=2000,
+        tools=[trends_tool],
+        tool_choice={"type": "tool", "name": "save_trends"},
         messages=[{"role": "user", "content": prompt}],
     )
-    text = msg.content[0].text.strip()
-    # 코드블록/전후 잡담이 섞여도 첫 { 부터 마지막 } 까지만 추출
-    start, end = text.find("{"), text.rfind("}")
-    if start == -1 or end == -1:
-        raise ValueError(f"Claude 응답에서 JSON을 못 찾음: {text[:200]}")
-    return json.loads(text[start:end + 1])
+    for block in msg.content:
+        if block.type == "tool_use":
+            summary = dict(block.input)
+            summary["week"] = WEEK_ID
+            return summary
+    raise RuntimeError("tool_use 블록이 응답에 없음 — API 응답 구조 확인 필요")
 
 
 def write_outputs(summary, rankings):
